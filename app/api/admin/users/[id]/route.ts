@@ -4,17 +4,19 @@ import { requireAdmin, AuthError } from "@/lib/requireAdmin";
 
 export const runtime = "nodejs";
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  let session;
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
+export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
-    session = await requireAdmin();
+    await requireAdmin();
   } catch (e) {
     const status = e instanceof AuthError ? e.status : 401;
     return NextResponse.json({ error: "Unauthorized" }, { status });
   }
+
+  const { id } = await params;
 
   const body = (await req.json().catch(() => ({}))) as any;
   const role = body.role === "admin" ? "admin" : "member";
@@ -23,7 +25,7 @@ export async function PATCH(
   if (role !== "admin") {
     const admins = await prisma.user.count({ where: { role: "admin" } });
     const target = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { role: true },
     });
 
@@ -36,7 +38,7 @@ export async function PATCH(
   }
 
   const updated = await prisma.user.update({
-    where: { id: params.id },
+    where: { id },
     data: { role },
     select: { id: true, email: true, role: true, createdAt: true },
   });
@@ -44,11 +46,8 @@ export async function PATCH(
   return NextResponse.json({ ok: true, user: updated });
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  let session;
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  let session: any;
   try {
     session = await requireAdmin();
   } catch (e) {
@@ -56,8 +55,10 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status });
   }
 
+  const { id } = await params;
+
   // Don't allow deleting yourself
-  if ((session as any).sub === params.id) {
+  if (session?.sub === id) {
     return NextResponse.json(
       { error: "You cannot delete your own account." },
       { status: 400 }
@@ -66,11 +67,13 @@ export async function DELETE(
 
   // Don't allow deleting the last admin
   const target = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { role: true },
   });
-  if (!target)
+
+  if (!target) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
 
   if (target.role === "admin") {
     const admins = await prisma.user.count({ where: { role: "admin" } });
@@ -82,6 +85,6 @@ export async function DELETE(
     }
   }
 
-  await prisma.user.delete({ where: { id: params.id } });
+  await prisma.user.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

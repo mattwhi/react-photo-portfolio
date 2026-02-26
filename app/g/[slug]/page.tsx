@@ -13,6 +13,10 @@ import { getSiteSettings } from "@/lib/siteSettings";
 
 export const revalidate = 60; // ISR: refresh occasionally (optional)
 
+type Props = {
+  params: Promise<{ slug: string }>;
+};
+
 const getGalleryBySlug = cache(async (slug: string) => {
   return prisma.gallery.findUnique({
     where: { slug },
@@ -20,13 +24,11 @@ const getGalleryBySlug = cache(async (slug: string) => {
   });
 });
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+
   const settings = await getSiteSettings();
-  const gallery = await getGalleryBySlug(params.slug);
+  const gallery = await getGalleryBySlug(slug);
   if (!gallery) return {};
 
   const seo = await prisma.seoMeta.findUnique({
@@ -101,12 +103,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function GalleryPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const gallery = await getGalleryBySlug(params.slug);
+export default async function GalleryPage({ params }: Props) {
+  const { slug } = await params;
+
+  const gallery = await getGalleryBySlug(slug);
   if (!gallery) return notFound();
 
   const settings = await getSiteSettings();

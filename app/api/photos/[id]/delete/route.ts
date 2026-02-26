@@ -2,22 +2,35 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { requireAdmin, AuthError } from "@/lib/requireAdmin";
 
 export const runtime = "nodejs";
 
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
 function filePathFromUrl(url: string) {
   if (!url.startsWith("/uploads/")) return null;
+  if (url.includes("..")) return null;
   const clean = url.replace(/^\/+/, "");
   return path.join(process.cwd(), "public", clean);
 }
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: Request, { params }: Ctx) {
+  // auth guard (recommended)
+  try {
+    await requireAdmin();
+  } catch (e) {
+    const status = e instanceof AuthError ? e.status : 401;
+    return NextResponse.json({ error: "Unauthorized" }, { status });
+  }
+
+  const { id } = await params;
+
   try {
     const photo = await prisma.photo.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, url: true },
     });
 
@@ -35,12 +48,15 @@ export async function POST(
       }
     }
 
-    await prisma.photo.delete({ where: { id: params.id } });
+    await prisma.photo.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
-      { error: "Delete failed", message: e?.message },
+      {
+        error: "Delete failed",
+        message: process.env.NODE_ENV !== "production" ? e?.message : undefined,
+      },
       { status: 500 }
     );
   }

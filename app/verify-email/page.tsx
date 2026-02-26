@@ -3,15 +3,16 @@ import { hashToken } from "@/lib/token";
 
 export const runtime = "nodejs";
 
-export default async function VerifyEmailPage({
-  searchParams,
-}: {
-  searchParams?: { email?: string; token?: string };
-}) {
-  const email = String(searchParams?.email ?? "")
+type Props = {
+  searchParams?: Promise<{ email?: string; token?: string }>;
+};
+
+export default async function VerifyEmailPage({ searchParams }: Props) {
+  const sp = searchParams ? await searchParams : {};
+  const email = String(sp.email ?? "")
     .trim()
     .toLowerCase();
-  const token = String(searchParams?.token ?? "").trim();
+  const token = String(sp.token ?? "").trim();
 
   if (!email || !token) {
     return (
@@ -30,6 +31,7 @@ export default async function VerifyEmailPage({
       type: "EMAIL_VERIFY",
       expiresAt: { gt: new Date() },
     },
+    select: { id: true },
   });
 
   if (!record) {

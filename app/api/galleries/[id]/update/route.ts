@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
+export async function POST(req: Request, { params }: Ctx) {
   await requireAdmin();
+
+  const { id } = await params;
 
   const form = await req.formData();
 
@@ -20,7 +23,7 @@ export async function POST(
     : 0;
 
   await prisma.gallery.update({
-    where: { id: params.id },
+    where: { id },
     data: { description, coverUrl, showInHero, heroOrder },
   });
 

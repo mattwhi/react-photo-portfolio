@@ -2,14 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
+export async function POST(req: Request, { params }: Ctx) {
   await requireAdmin();
 
+  const { id } = await params;
+
   const latest = await prisma.photo.findFirst({
-    where: { galleryId: params.id },
+    where: { galleryId: id },
     orderBy: { createdAt: "desc" },
     select: { url: true },
   });
@@ -22,11 +25,12 @@ export async function POST(
   }
 
   await prisma.gallery.update({
-    where: { id: params.id },
+    where: { id },
     data: { coverUrl: latest.url },
   });
 
   // Redirect back to wherever you clicked from
   const back = req.headers.get("referer") || "/admin/galleries";
-  return NextResponse.redirect(back);
+  const url = new URL(back, req.url); // handles relative + absolute safely
+  return NextResponse.redirect(url);
 }

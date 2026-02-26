@@ -6,6 +6,10 @@ import path from "node:path";
 
 export const runtime = "nodejs";
 
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
 function safeFilename(name: string) {
   const base = name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const stamp = Date.now().toString(36);
@@ -19,10 +23,9 @@ function filePathFromUrl(url: string) {
   return path.join(process.cwd(), "public", clean);
 }
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: Request, { params }: Ctx) {
+  const { id } = await params;
+
   try {
     await requireAdmin();
   } catch (e) {
@@ -50,7 +53,7 @@ export async function POST(
     }
 
     const targetGallery = await prisma.gallery.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, slug: true },
     });
     if (!targetGallery) {

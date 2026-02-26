@@ -7,14 +7,18 @@ export const runtime = "nodejs";
 
 export async function GET() {
   await requireAdmin();
+
   const galleries = await prisma.gallery.findMany({
     orderBy: { createdAt: "desc" },
     select: { id: true, title: true, slug: true },
   });
+
   return NextResponse.json({ galleries });
 }
 
 export async function POST(req: Request) {
+  await requireAdmin();
+
   const form = await req.formData();
   const title = String(form.get("title") ?? "").trim();
   const description = String(form.get("description") ?? "").trim() || null;

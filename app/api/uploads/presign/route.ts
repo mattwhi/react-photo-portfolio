@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export const runtime = "nodejs";
 
@@ -12,15 +13,34 @@ function publicUrlFromKey(key: string) {
 }
 
 function safeName(name: string) {
-  return name
+  const cleaned = String(name || "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9.\-_]+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/^\-+|\-+$/g, "");
+
+  return cleaned || "file";
+}
+
+function getEnv(name: string) {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env var: ${name}`);
+  return v;
 }
 
 export async function POST(req: Request) {
-  const { filename, contentType, folder } = await req.json();
+  await requireAdmin();
+
+  const body = (await req.json().catch(() => null)) as {
+    filename?: string;
+    contentType?: string;
+    folder?: string;
+  } | null;
+
+  const filename = String(body?.filename || "").trim();
+  const contentType = String(body?.contentType || "").trim();
+  const folder = String(body?.folder || "").trim();
 
   if (!filename || !contentType) {
     return NextResponse.json(
@@ -29,10 +49,32 @@ export async function POST(req: Request) {
     );
   }
 
-  const accountId = process.env.R2_ACCOUNT_ID!;
-  const bucket = process.env.R2_BUCKET!;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID!;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY!;
+  // Optional safety: only allow images
+  if (!contentType.startsWith("image/")) {
+    return NextResponse.json(
+      { error: "Only image/* content types are allowed" },
+      { status: 400 }
+    );
+  }
+
+  let accountId: string,
+    bucket: string,
+    accessKeyId: string,
+    secretAccessKey: string;
+  try {
+    accountId = getEnv("R2_ACCOUNT_ID");
+    bucket = getEnv("R2_BUCKET");
+    accessKeyId = getEnv("R2_ACCESS_KEY_ID");
+    secretAccessKey = getEnv("R2_SECRET_ACCESS_KEY");
+  } catch (e: any) {
+    return NextResponse.json(
+      {
+        error: "Server misconfigured",
+        message: process.env.NODE_ENV !== "production" ? e?.message : undefined,
+      },
+      { status: 500 }
+    );
+  }
 
   const client = new S3Client({
     region: "auto",
@@ -40,8 +82,10 @@ export async function POST(req: Request) {
     credentials: { accessKeyId, secretAccessKey },
   });
 
-  const cleanFolder = String(folder || "media").replace(/^\/+|\/+$/g, "");
-  const key = `media/${cleanFolder}/${crypto.randomUUID()}-${safeName(
+  // Base prefix is always "media"
+  const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
+  const folderPrefix = cleanFolder ? `${cleanFolder}/` : "";
+  const key = `media/${folderPrefix}${crypto.randomUUID()}-${safeName(
     filename
   )}`;
 

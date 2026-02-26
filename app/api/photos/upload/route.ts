@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export const runtime = "nodejs";
 
@@ -12,15 +13,21 @@ function safeFilename(name: string) {
 }
 
 export async function POST(req: Request) {
+  await requireAdmin();
+
   const form = await req.formData();
-  const galleryId = String(form.get("galleryId") ?? "");
+  const galleryId = String(form.get("galleryId") ?? "").trim();
   const description = String(form.get("description") ?? "").trim() || null;
 
   if (!galleryId) {
     return NextResponse.json({ error: "Missing galleryId" }, { status: 400 });
   }
 
-  const gallery = await prisma.gallery.findUnique({ where: { id: galleryId } });
+  const gallery = await prisma.gallery.findUnique({
+    where: { id: galleryId },
+    select: { id: true, slug: true },
+  });
+
   if (!gallery) {
     return NextResponse.json({ error: "Gallery not found" }, { status: 404 });
   }
@@ -33,14 +40,13 @@ export async function POST(req: Request) {
   const dir = path.join(process.cwd(), "public", "uploads", gallery.slug);
   await fs.mkdir(dir, { recursive: true });
 
-  const created = [];
+  const createdIds: string[] = [];
 
   for (const f of files) {
     if (!(f instanceof File)) continue;
     if (!f.type.startsWith("image/")) continue;
 
-    const arrayBuffer = await f.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = Buffer.from(await f.arrayBuffer());
 
     const filename = safeFilename(f.name || "upload.jpg");
     const filepath = path.join(dir, filename);
@@ -51,15 +57,20 @@ export async function POST(req: Request) {
 
     const photo = await prisma.photo.create({
       data: {
-        galleryId,
+        galleryId: gallery.id,
         url,
         description,
         title: null,
       },
+      select: { id: true },
     });
 
-    created.push(photo.id);
+    createdIds.push(photo.id);
   }
 
-  return NextResponse.json({ ok: true, createdCount: created.length });
+  return NextResponse.json({
+    ok: true,
+    createdCount: createdIds.length,
+    createdIds,
+  });
 }

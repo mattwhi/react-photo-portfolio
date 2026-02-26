@@ -12,8 +12,8 @@ export async function POST(req: Request) {
     title?: string;
   } | null;
 
-  const galleryId = body?.galleryId ?? "";
-  const url = body?.url ?? "";
+  const galleryId = (body?.galleryId ?? "").trim();
+  const url = (body?.url ?? "").trim();
   const description = body?.description?.trim() || null;
   const title = body?.title?.trim() || null;
 
@@ -24,27 +24,39 @@ export async function POST(req: Request) {
     );
   }
 
-  // ✅ fetch gallery once so we know if it already has a cover
+  // Fetch gallery once so we know if it already has a cover
   const gallery = await prisma.gallery.findUnique({
     where: { id: galleryId },
-    select: { coverUrl: true },
+    select: { id: true, coverUrl: true },
   });
 
   if (!gallery) {
     return NextResponse.json({ error: "Gallery not found" }, { status: 404 });
   }
 
-  const photo = await prisma.photo.create({
-    data: { galleryId, url, description, title },
+  const result = await prisma.$transaction(async (tx) => {
+    const photo = await tx.photo.create({
+      data: { galleryId: gallery.id, url, description, title },
+      select: {
+        id: true,
+        galleryId: true,
+        url: true,
+        title: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+
+    // Auto-cover only if not set already
+    if (!gallery.coverUrl) {
+      await tx.gallery.update({
+        where: { id: gallery.id },
+        data: { coverUrl: url },
+      });
+    }
+
+    return photo;
   });
 
-  // ✅ auto-cover only if not set already
-  if (!gallery.coverUrl) {
-    await prisma.gallery.update({
-      where: { id: galleryId },
-      data: { coverUrl: url },
-    });
-  }
-
-  return NextResponse.json({ ok: true, photo });
+  return NextResponse.json({ ok: true, photo: result });
 }

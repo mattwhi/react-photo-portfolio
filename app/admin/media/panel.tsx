@@ -21,6 +21,8 @@ export default function MediaPanel() {
         endpoint="/api/media/photos"
         allowUpload
         onPick={(p) => setSelected(p)}
+        presignEndpoint="/api/r2/presign" // whatever your route is
+        createEndpoint="/api/media/assets"
       />
 
       {selected ? (

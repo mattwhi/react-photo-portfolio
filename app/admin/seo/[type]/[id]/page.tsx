@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { SeoEntityType } from "@prisma/client";
 import SeoForm from "./seo-form";
 
-export default async function AdminSeoEdit({
-  params,
-}: {
-  params: { type: string; id: string };
-}) {
-  const type = params.type.toUpperCase() as SeoEntityType;
+type Props = {
+  params: Promise<{ type: string; id: string }>;
+};
 
+export default async function AdminSeoEdit({ params }: Props) {
+  const { type: rawType, id } = await params;
+
+  const type = rawType.toUpperCase() as SeoEntityType;
   if (!Object.values(SeoEntityType).includes(type)) return notFound();
 
   // optional: show entity title in UI
@@ -17,20 +18,20 @@ export default async function AdminSeoEdit({
     type === SeoEntityType.GALLERY
       ? (
           await prisma.gallery.findUnique({
-            where: { id: params.id },
+            where: { id },
             select: { title: true, slug: true },
           })
-        )?.title
+        )?.title ?? "Gallery"
       : "Item";
 
   const seo = await prisma.seoMeta.findUnique({
-    where: { entityType_entityId: { entityType: type, entityId: params.id } },
+    where: { entityType_entityId: { entityType: type, entityId: id } },
   });
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Edit SEO: {entityTitle}</h1>
-      <SeoForm entityType={type} entityId={params.id} initial={seo} />
+      <SeoForm entityType={type} entityId={id} initial={seo} />
     </div>
   );
 }

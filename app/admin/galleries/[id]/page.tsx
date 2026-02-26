@@ -4,13 +4,15 @@ import { GlassCard } from "@/components/GlassCard";
 import { GalleryMediaTools } from "./GalleryMediaTools";
 import { DeletePhotoButton } from "@/components/media/DeletePhotoButton";
 
-export default async function AdminGalleryDetail({
-  params,
-}: {
-  params: { id: string };
-}) {
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function AdminGalleryDetail({ params }: Props) {
+  const { id } = await params;
+
   const gallery = await prisma.gallery.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { photos: { orderBy: { createdAt: "desc" } } },
   });
 

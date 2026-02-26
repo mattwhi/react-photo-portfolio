@@ -468,7 +468,7 @@ export function PageBuilderClient({ page }: { page: PageWithSections }) {
         onPick={(p: PickedPhoto) => {
           setHeroImage({
             photoId: p.id,
-            key: p.key,
+            key: p.key ?? "",
             url: p.url,
             alt: p.alt || "",
             title: p.title || "",
@@ -483,7 +483,7 @@ export function PageBuilderClient({ page }: { page: PageWithSections }) {
         onPick={(p: PickedPhoto) => {
           setFeatureImage({
             photoId: p.id,
-            key: p.key,
+            key: p.key ?? "",
             url: p.url,
             alt: p.alt || "",
             title: p.title || "",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,48 +12,51 @@ export const runtime = "nodejs";
  * ]
  */
 export async function GET(req: Request) {
+  await requireAdmin();
+
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").toLowerCase().trim();
   const galleryId = (searchParams.get("galleryId") || "").trim();
 
   const galleries = await prisma.gallery.findMany({
-    orderBy: { createdAt: "desc" as any }, // change to { id: "desc" } if no createdAt
-    include: {
-      photos: true,
-    },
+    where: galleryId ? { id: galleryId } : undefined,
+    orderBy: { createdAt: "desc" }, // if you don't have createdAt, use: { id: "desc" }
     take: 200,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      photos: {
+        // keep it lean - only what the picker needs
+        select: { id: true, url: true, title: true },
+        orderBy: { createdAt: "desc" }, // if no createdAt on Photo, use: { id: "desc" }
+        take: 500,
+      },
+    },
   });
 
-  const result = galleries
-    .filter((g: any) => (!galleryId ? true : g.id === galleryId))
-    .map((g: any) => {
-      const photos = (g.photos || [])
-        .map((p: any) => {
-          const url = p.url || "";
-          const title = p.title || "";
-          const key = p.r2Key || ""; // if you have it
-          return {
-            id: p.id,
-            key,
-            url,
-            alt: "", // your Photo model doesn't have alt (safe empty)
-            title,
-          };
-        })
-        .filter((p: any) => p.url)
-        .filter((p: any) => {
-          if (!q) return true;
-          const hay = `${p.title} ${p.key} ${p.url}`.toLowerCase();
-          return hay.includes(q);
-        })
-        .slice(0, 500);
+  const result = galleries.map((g) => {
+    const photos = (g.photos || [])
+      .map((p) => ({
+        id: p.id,
+        key: "", // use "" unless you actually have a storage key field in Prisma
+        url: p.url || "",
+        alt: "", // safe default
+        title: p.title || "",
+      }))
+      .filter((p) => p.url)
+      .filter((p) => {
+        if (!q) return true;
+        const hay = `${p.title} ${p.url}`.toLowerCase();
+        return hay.includes(q);
+      });
 
-      return {
-        id: g.id,
-        title: g.title ?? g.slug ?? "Album",
-        photos,
-      };
-    });
+    return {
+      id: g.id,
+      title: g.title ?? g.slug ?? "Album",
+      photos,
+    };
+  });
 
   return NextResponse.json(result);
 }

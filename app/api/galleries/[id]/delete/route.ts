@@ -4,13 +4,19 @@ import { requireAdmin } from "@/lib/requireAdmin";
 
 export const runtime = "nodejs";
 
-export async function POST(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
+export async function POST(req: Request, { params }: Ctx) {
   await requireAdmin();
-  await prisma.gallery.delete({ where: { id: params.id } });
+
+  const { id } = await params;
+
+  await prisma.gallery.delete({ where: { id } });
+
+  // Redirect back to admin galleries (use request URL as base)
   return NextResponse.redirect(
-    new URL("/admin/galleries", "http://localhost:3000")
+    new URL("/admin/galleries", process.env.NEXT_PUBLIC_APP_URL)
   );
 }
