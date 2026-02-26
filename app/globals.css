@@ -1,0 +1,105 @@
+@tailwind utilities;
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@import "tailwindcss/preflight";
+
+
+/* Theme tokens */
+:root {
+  --bg: 250 250 250;
+  --fg: 24 24 27;
+  --muted: 82 82 91;
+
+  --glass-bg: 255 255 255 / 0.72;
+  --glass-border: 0 0 0 / 0.08;
+  --sheen-a: 255 255 255 / 0.70;
+  --sheen-b: 255 255 255 / 0.18;
+}
+
+.dark {
+  --bg: 7 10 16;
+  --fg: 255 255 255;
+  --muted: 161 161 170;
+
+  --glass-bg: 255 255 255 / 0.06;
+  --glass-border: 255 255 255 / 0.12;
+  --sheen-a: 255 255 255 / 0.12;
+  --sheen-b: 255 255 255 / 0.05;
+}
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+@layer utilities {
+  .hover-surface {
+    background: color-mix(in oklab, rgb(var(--fg)) 6%, transparent);
+  }
+  .hover-surface-2 {
+    background: color-mix(in oklab, rgb(var(--fg)) 10%, transparent);
+  }
+  .muted {
+    color: rgb(var(--muted));
+  }
+
+  .glass {
+    @apply relative isolate overflow-hidden rounded-3xl border backdrop-blur-2xl;
+    background: rgb(var(--glass-bg));
+    border-color: rgb(var(--glass-border));
+    color: rgb(var(--fg));
+
+    /* richer depth */
+    box-shadow:
+      0 20px 60px -40px rgba(0,0,0,.28),
+      0 1px 0 rgba(255,255,255,.25) inset;
+  }
+
+  /* sheen */
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      rgb(var(--sheen-a)),
+      rgb(var(--sheen-b)),
+      transparent
+    );
+    opacity: .95;
+  }
+
+  /* soft noise for “2026 glass” */
+  .glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  }
+
+  /* subtle variant (for inner panels / details) */
+  .glass-subtle {
+    background: color-mix(in oklab, rgb(var(--glass-bg)) 70%, transparent);
+    border-color: color-mix(in oklab, rgb(var(--glass-border)) 80%, transparent);
+  }
+
+  /* pressed / hoverable */
+  .glass-press {
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .glass-press:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 26px 70px -45px rgba(0,0,0,.35),
+      0 1px 0 rgba(255,255,255,.28) inset;
+  }
+  .glass-press:active {
+    transform: translateY(0px);
+  }
+}
+a, button {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}

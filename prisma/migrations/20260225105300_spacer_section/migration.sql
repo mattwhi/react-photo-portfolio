@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `BlogSection` MODIFY `type` ENUM('H1', 'RICH_TEXT', 'TWO_COL_IMAGE_TEXT', 'IMAGE', 'DIVIDER', 'SPACER') NOT NULL;

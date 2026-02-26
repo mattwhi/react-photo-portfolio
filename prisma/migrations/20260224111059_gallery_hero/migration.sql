@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `Gallery` ADD COLUMN `heroOrder` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `showInHero` BOOLEAN NOT NULL DEFAULT false;

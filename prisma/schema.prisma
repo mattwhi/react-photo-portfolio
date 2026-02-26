@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  emailVerifiedAt DateTime?   // ✅ add
+  password  String
+  passwordChangedAt DateTime @default(now()) // ✅ add
+  role      String   @default("member") // ✅ change from admin → member
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+enum VerificationType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String           @id @default(cuid())
+  email     String
+  tokenHash String           @unique
+  type      VerificationType
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+
+  @@index([email, type, expiresAt])
+}
+
+model Gallery {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  coverUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  photos      Photo[]
+  showInHero  Boolean  @default(false)
+  heroOrder   Int      @default(0)
+}
+
+model Photo {
+  id          String   @id @default(cuid())
+  galleryId   String
+  gallery     Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  r2Key       String?  @db.Text
+  title       String?
+  description String?
+  url         String
+  width       Int?
+  height      Int?
+  takenAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt  // optional but nice
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  key       String   @unique              // R2 object key
+  url       String   @db.Text             // public URL (R2_PUBLIC_BASE_URL + key)
+  title     String?  @db.VarChar(255)
+  alt       String?  @db.VarChar(255)
+
+  mimeType  String?  @db.VarChar(120)
+  size      Int?
+  width     Int?
+  height    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+model SiteSettings {
+  id          String   @id
+  siteTitle   String
+  siteName  String @db.VarChar(255) @default("Cre8 Photography")
+
+  // NEW (needed for canonicals/sitemaps) — nullable so migration won’t fail
+  siteUrl     String?  @db.VarChar(255) // e.g. "https://159photography.co.uk"
+
+  logoUrl     String?  @db.Text
+  logoAlt     String?  @db.VarChar(255)
+  logoTitle   String?  @db.VarChar(255)
+
+  // If these already exist and are always set, keep them required.
+  // If you’ve ever had nulls here, make them Json?
+  navLinks    Json
+  socialLinks Json
+
+  // SEO defaults — give required fields defaults so old rows migrate cleanly
+  titleTemplate        String   @db.VarChar(255) @default("%s | cre8 Photography")
+  defaultDescription   String?  @db.Text
+  defaultOgImageUrl    String?  @db.Text  // absolute recommended
+  twitterHandle        String?  @db.VarChar(64)
+  globalNoindex        Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum SectionType {
+  H1
+  RICH_TEXT
+  TWO_COL_IMAGE_TEXT
+  IMAGE
+  DIVIDER
+  SPACER
+}
+
+model BlogPage {
+  id              String     @id @default(cuid())
+  title           String
+  slug            String     @unique
+
+  metaTitle       String?    @db.VarChar(255)
+  metaDescription String?    @db.Text
+
+  heroImage        Json?
+  featureImage     Json?
+
+  status          PageStatus @default(DRAFT)
+  publishedAt     DateTime?
+
+  sections        BlogSection[]
+
+  authorName String? @db.VarChar(120)
+  category   String? @db.VarChar(120)
+  tags       Json?   // string[] e.g. ["seo","photography"]
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model BlogSection {
+  id        String      @id @default(cuid())
+  pageId    String
+  page      BlogPage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  type      SectionType
+  sortOrder Int
+  data      Json
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([pageId, sortOrder])
+}
+
+enum SeoEntityType {
+  GALLERY
+  PAGE
+  PROFILE
+  POST
+}
+
+model SeoMeta {
+  id            String        @id @default(cuid())
+  entityType    SeoEntityType
+  entityId      String
+
+  // Standard
+  title         String?
+  description   String?
+  canonicalUrl  String?
+
+  // Open Graph / Twitter
+  ogTitle       String?
+  ogDescription String?
+  ogImageUrl    String?       // absolute recommended
+  twitterCard   String?       // e.g. "summary_large_image"
+
+  // Indexing
+  noindex       Boolean       @default(false)
+  nofollow      Boolean       @default(false)
+
+  // Advanced
+  jsonLd        Json?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([entityType, entityId])
+  @@index([entityType])
+}
+
+model RedirectRule {
+  id        String   @id @default(cuid())
+  fromPath  String   @unique // "/old-path" (no domain)
+  toPath    String           // "/new-path" or full URL
+  status    Int      @default(301)
+  enabled   Boolean  @default(true)
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
