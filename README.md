@@ -1,62 +1,62 @@
-# Photo Portfolio (React + Next.js) — Starter
+# Photo Portfolio React (Next.js) 📸✨
 
-This is a **React** photo-portfolio starter built with **Next.js (React)**, Tailwind (glass/pastel theme), Prisma, and a simple admin area.
+A modern **photography portfolio + member area** built with **Next.js (App Router)**, **TypeScript**, **Tailwind**, and **Prisma/MySQL**.  
+Designed with a sleek **glass/soft-neon UI** and an admin experience for managing galleries, photos, and page content.
 
-## 1) Prereqs
+> This repo is the foundation for a portfolio site that can evolve into a community-style platform (member profiles, sharing, messaging, etc.).
 
-- Node.js **20.9+** (recommended)  
-- A package manager: npm / pnpm / yarn
+---
 
-## 2) Install & run
+## Features
+
+### Public site
+
+- **SEO-friendly pages** (clean routing, metadata-ready structure)
+- **Homepage hero / carousel** for featured work
+- **Gallery pages** with modern layout + lightbox-style viewing
+- Optional **blog/content pages** (markdown-based or page builder approach)
+
+### Member + Admin
+
+- **Email/password authentication** (no social login required)
+- **Admin dashboard** for:
+  - Managing galleries (create/edit/publish)
+  - Uploading and ordering photos
+  - Optional media library workflows (reuse images across galleries)
+- **Page builder/editor** support (e.g., TinyMCE integration)
+
+### UI / DX
+
+- **GlassCard / glassmorphism** components as a consistent design language
+- Tailwind-driven design system (easy theme iteration)
+- Prisma-powered DB access with a clean server component pattern
+
+---
+
+## Tech Stack
+
+- **Next.js** (App Router) + **React** + **TypeScript**
+- **Tailwind CSS**
+- **Prisma ORM**
+- **MySQL** (local or hosted)
+- Optional:
+  - **TinyMCE** (rich text editor for page builder)
+  - S3-compatible object storage (e.g., **Cloudflare R2**) for photo storage
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js **18+** (Node **20+** recommended)
+- MySQL **8+**
+- Package manager: `npm`, `pnpm`, or `yarn`
+
+### 1) Clone & install
 
 ```bash
-# 1) install deps
+git clone <your-repo-url>
+cd photo-portfolio-react
 npm install
-
-# 2) create your env file
-cp .env.example .env
-
-# 3) create db + tables
-npx prisma migrate dev --name init
-
-# 4) seed admin user + sample galleries/photos
-npm run seed
-
-# 5) start dev server
-npm run dev
 ```
-
-Open: http://localhost:3000
-
-## 3) Admin login
-
-Go to: http://localhost:3000/admin/login
-
-Default seed credentials come from your `.env`:
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-
-## 4) Upload photos (starter = local storage)
-
-Admin upload saves images to:
-- `public/uploads/<gallerySlug>/...`
-
-Photo URLs are stored as `/uploads/<gallerySlug>/<filename>`.
-
-**Production note:** if you deploy to serverless platforms, local disk uploads won’t persist.
-The next step is switching uploads to Cloudflare R2 / S3 using presigned URLs.
-
-## 5) What to edit first
-
-- `app/page.tsx` (homepage gallery list)
-- `app/g/[slug]/page.tsx` (gallery page + carousel)
-- `components/PhotoCarousel.tsx` (carousel behavior)
-- `app/admin/*` (admin UI)
-
-## 6) “Starting React” in 60 seconds
-
-- React apps are built from **components** (functions returning UI).
-- State lives in components (`useState`) and UI updates when state changes.
-- Next.js gives you routing (`app/` folder), server-side rendering, and API routes.
-
-Happy building 🤝
